@@ -144,28 +144,6 @@ Neural_Decoding_DS_Final/
 
 ---
 
-## Key Parameters and Configurations
-
-### Time Binning Parameters
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `bins_before` | Number of time bins before output used for decoding | 6-13 |
-| `bins_current` | Use concurrent time bin (0 or 1) | 1 |
-| `bins_after` | Number of time bins after output used for decoding | 0-6 |
-| `bin_size` | Duration of each time bin (seconds) | 0.05 |
-
-### Model Hyperparameters
-
-| Model | Key Parameters |
-|-------|----------------|
-| Wiener Cascade | `degree` (polynomial degree) |
-| Kalman Filter | `C` (noise scaling factor) |
-| SVR | `C` (regularization), `max_iter` |
-| XGBoost | `max_depth`, `n_estimators`, `learning_rate` |
-| Neural Nets | `units`, `dropout`, `num_epochs` |
-
----
 
 ## Data Description
 
