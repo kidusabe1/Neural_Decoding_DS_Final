@@ -382,6 +382,7 @@ Examples:
         "test_size": args.test_size,
         "output_dir": args.output_dir,
         "bayes_opt": args.bayes_opt,
+        "bayes_opt": args.bayes_opt,
     }
 
     return Path(args.data_path), args.decoder, config

@@ -88,36 +88,6 @@ class KalmanConfig:
 
 
 @dataclass
-class SVRConfig:
-    """Support Vector Regression configuration.
-
-    Attributes:
-        kernel: Kernel type.
-        C: Regularization parameter.
-        gamma: Kernel coefficient.
-    """
-
-    kernel: str = "rbf"
-    C: float = 1.0
-    gamma: str = "scale"
-
-
-@dataclass
-class XGBoostConfig:
-    """XGBoost decoder configuration.
-
-    Attributes:
-        n_estimators: Number of gradient boosted trees.
-        max_depth: Maximum tree depth.
-        learning_rate: Boosting learning rate.
-    """
-
-    n_estimators: int = 100
-    max_depth: int = 3
-    learning_rate: float = 0.1
-
-
-@dataclass
 class NeuralNetConfig:
     """Neural network decoder configuration.
 
@@ -152,13 +122,11 @@ class DecodingConfig:
     data: DataConfig = field(default_factory=DataConfig)
     wiener: WienerConfig = field(default_factory=WienerConfig)
     kalman: KalmanConfig = field(default_factory=KalmanConfig)
-    svr: SVRConfig = field(default_factory=SVRConfig)
-    xgboost: XGBoostConfig = field(default_factory=XGBoostConfig)
     neural_net: NeuralNetConfig = field(default_factory=NeuralNetConfig)
 
     def get_decoder_config(
         self, decoder_name: str
-    ) -> Union[WienerConfig, KalmanConfig, SVRConfig, XGBoostConfig, NeuralNetConfig]:
+    ) -> Union[WienerConfig, KalmanConfig, NeuralNetConfig]:
         """Get configuration for a specific decoder.
 
         Args:
@@ -175,10 +143,6 @@ class DecodingConfig:
             return self.wiener
         elif name == "kalman":
             return self.kalman
-        elif name == "svr":
-            return self.svr
-        elif name == "xgboost":
-            return self.xgboost
         elif name in ["dense_nn", "lstm"]:
             return self.neural_net
         else:
