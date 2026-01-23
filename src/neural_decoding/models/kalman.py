@@ -16,20 +16,20 @@ class KalmanFilterDecoder(BaseDecoder):
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> "KalmanFilterDecoder":
         # X: neural data (time x neurons); y: outputs (time x kinematic dims)
-        X_mat = np.matrix(y.T)
-        Z_mat = np.matrix(X.T)
+        X_mat = y.T
+        Z_mat = X.T
 
         num_time = X_mat.shape[1]
         X1 = X_mat[:, 0 : num_time - 1]
         X2 = X_mat[:, 1:]
 
         # Transition matrix A and its covariance W
-        A = X2 * X1.T * inv(X1 * X1.T)
-        W = (X2 - A * X1) * (X2 - A * X1).T / (num_time - 1) / self.C_scale
+        A = X2 @ X1.T @ inv(X1 @ X1.T)
+        W = (X2 - A @ X1) @ (X2 - A @ X1).T / (num_time - 1) / self.C_scale
 
         # Measurement matrix H and its covariance Q
-        H = Z_mat * X_mat.T * inv(X_mat * X_mat.T)
-        Q = (Z_mat - H * X_mat) * (Z_mat - H * X_mat).T / num_time
+        H = Z_mat @ X_mat.T @ inv(X_mat @ X_mat.T)
+        Q = (Z_mat - H @ X_mat) @ (Z_mat - H @ X_mat).T / num_time
 
         self.model = (A, W, H, Q)
         self.is_fitted = True
@@ -40,26 +40,29 @@ class KalmanFilterDecoder(BaseDecoder):
             raise RuntimeError("Model not fitted.")
 
         A, W, H, Q = self.model
-        X_true = np.matrix(X.T)
+        X_true = X.T
 
         num_states = A.shape[0]
         num_timesteps = X_true.shape[1]
         states = np.empty((num_states, num_timesteps))
-        P_m = np.matrix(np.zeros((num_states, num_states)))
-        P = np.matrix(np.zeros((num_states, num_states)))
+        P_m = np.zeros((num_states, num_states))
+        P = np.zeros((num_states, num_states))
 
         if y_init is not None:
-            state = np.matrix(np.asarray(y_init).reshape(-1, 1))
+            state = np.asarray(y_init).reshape(-1, 1)
         else:
-            state = np.matrix(np.zeros((num_states, 1)))
-        states[:, 0] = np.squeeze(state)
+            state = np.zeros((num_states, 1))
+        states[:, 0] = state.flatten()
 
         for t in range(X_true.shape[1] - 1):
-            P_m = A * P * A.T + W
-            state_m = A * state
-            K = P_m * H.T * inv(H * P_m * H.T + Q)
-            P = (np.matrix(np.eye(num_states)) - K * H) * P_m
-            state = state_m + K * (X_true[:, t + 1] - H * state_m)
-            states[:, t + 1] = np.squeeze(state)
+            P_m = A @ P @ A.T + W
+            state_m = A @ state
+            K = P_m @ H.T @ inv(H @ P_m @ H.T + Q)
+            P = (np.eye(num_states) - K @ H) @ P_m
+            
+            # Ensure observation is a column vector
+            observation = X_true[:, t + 1].reshape(-1, 1)
+            state = state_m + K @ (observation - H @ state_m)
+            states[:, t + 1] = state.flatten()
 
         return np.asarray(states.T)
