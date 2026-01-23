@@ -36,6 +36,22 @@ from neural_decoding.evaluation.metrics import evaluate_decoder
 from neural_decoding.visualization.plots import plot_predictions, save_figure
 from neural_decoding.logger import logger
 
+# Constants for default values
+DEFAULT_BIN_SIZE = 0.05
+DEFAULT_TEST_SIZE = 0.2
+DEFAULT_START_TIME = 0.0
+DEFAULT_BINS_BEFORE = 0
+DEFAULT_BINS_AFTER = 0
+DEFAULT_BINS_CURRENT = 1
+DEFAULT_UNITS = 400
+DEFAULT_DROPOUT = 0.25
+DEFAULT_EPOCHS = 10
+DEFAULT_BATCH_SIZE = 128
+DEFAULT_VERBOSE = 1
+DEFAULT_NOISE_SCALE = 1.0
+DEFAULT_DEGREE = 3
+DEFAULT_OUTPUT_DIR = "./reports/figures"
+
 
 def run_data_loading(
     data_path: Path,
@@ -73,8 +89,8 @@ def run_preprocessing(
         Tuple of (X_train, X_test, y_train, y_test).
     """
     logger.info("Preprocessing data...")
-    bin_size = config.get("bin_size", 0.05)
-    start_time = config.get("start_time", 0.0)
+    bin_size = config.get("bin_size", DEFAULT_BIN_SIZE)
+    start_time = config.get("start_time", DEFAULT_START_TIME)
     end_time = config.get("end_time", None)
 
     if end_time is None:
@@ -91,9 +107,9 @@ def run_preprocessing(
     )
 
     # Set default values for bins_before and bins_after
-    bins_before = config.get("bins_before", 0)
-    bins_after = config.get("bins_after", 0)
-    bins_current = config.get("bins_current", 1)
+    bins_before = config.get("bins_before", DEFAULT_BINS_BEFORE)
+    bins_after = config.get("bins_after", DEFAULT_BINS_AFTER)
+    bins_current = config.get("bins_current", DEFAULT_BINS_CURRENT)
 
     logger.debug(
         "Creating train/test split with bins_before=%d, bins_after=%d, bins_current=%d",
@@ -108,7 +124,7 @@ def run_preprocessing(
         bins_before,
         bins_after,
         bins_current,
-        test_size=config.get("test_size", 0.2),
+        test_size=config.get("test_size", DEFAULT_TEST_SIZE),
     )
 
     logger.info(
@@ -117,6 +133,65 @@ def run_preprocessing(
         X_test.shape,
     )
     return X_train, X_test, y_train, y_test
+
+
+def _create_decoder(decoder_name: str, config: Dict[str, Any]) -> BaseDecoder:
+    """Factory function to create decoder instances.
+
+    Args:
+        decoder_name: Name of the decoder.
+        config: Configuration dictionary.
+
+    Returns:
+        Instantiated decoder.
+
+    Raises:
+        ImportError: If dependencies are missing.
+        ValueError: If decoder name is unknown.
+    """
+    name = decoder_name.lower()
+
+    if name in ["wiener", "wiener_filter"]:
+        return WienerFilterDecoder()
+
+    if name in ["wiener_cascade", "wiener_cascade_decoder", "wc"]:
+        degree = config.get("degree", DEFAULT_DEGREE)
+        return WienerCascadeDecoder(degree=degree)
+
+    if name == "kalman":
+        noise_scale = config.get("noise_scale_c", DEFAULT_NOISE_SCALE)
+        return KalmanFilterDecoder(noise_scale_c=noise_scale)
+
+    # Neural network decoders
+    units = config.get("units", DEFAULT_UNITS)
+    dropout = config.get("dropout_rate", DEFAULT_DROPOUT)
+    epochs = config.get("num_epochs", DEFAULT_EPOCHS)
+    batch_size = config.get("batch_size", DEFAULT_BATCH_SIZE)
+    verbose = config.get("verbose", DEFAULT_VERBOSE)
+
+    if name == "dense_nn":
+        if DenseNNDecoder is None:
+            raise ImportError("DenseNNDecoder unavailable.")
+        return DenseNNDecoder(
+            units=units,
+            dropout_rate=dropout,
+            num_epochs=epochs,
+            batch_size=batch_size,
+            verbose=verbose,
+        )
+
+    if name == "lstm":
+        if LSTMDecoder is None:
+            raise ImportError("LSTMDecoder unavailable.")
+        return LSTMDecoder(
+            units=config.get("units", 128),  # LSTM might want fewer units by default?
+            dropout_rate=dropout,
+            num_epochs=config.get("num_epochs", 50),
+            batch_size=batch_size,
+            verbose=verbose,
+        )
+
+    raise ValueError(f"Unknown decoder: {decoder_name}")
 
 
 def run_training(
@@ -141,37 +216,7 @@ def run_training(
         ValueError: If decoder name is unknown.
     """
     logger.info("Training decoder: %s", decoder_name)
-    name = decoder_name.lower()
-    decoder: BaseDecoder
-
-    if name in ["wiener", "wiener_filter"]:
-        decoder = WienerFilterDecoder()
-    elif name in ["wiener_cascade", "wiener_cascade_decoder", "wc"]:
-        decoder = WienerCascadeDecoder(degree=config.get("degree", 3))
-    elif name == "kalman":
-        decoder = KalmanFilterDecoder(noise_scale_c=config.get("noise_scale_c", 1.0))
-    elif name == "dense_nn":
-        if DenseNNDecoder is None:
-            raise ImportError("DenseNNDecoder unavailable (TensorFlow not installed).")
-        decoder = DenseNNDecoder(
-            units=config.get("units", 400),
-            dropout_rate=config.get("dropout_rate", 0.25),
-            num_epochs=config.get("num_epochs", 10),
-            batch_size=config.get("batch_size", 128),
-            verbose=config.get("verbose", 1),
-        )
-    elif name == "lstm":
-        if LSTMDecoder is None:
-            raise ImportError("LSTMDecoder unavailable (TensorFlow not installed).")
-        decoder = LSTMDecoder(
-            units=config.get("units", 128),
-            dropout_rate=config.get("dropout_rate", 0.25),
-            num_epochs=config.get("num_epochs", 50),
-            batch_size=config.get("batch_size", 128),
-            verbose=config.get("verbose", 1),
-        )
-    else:
-        raise ValueError(f"Unknown decoder: {decoder_name}")
+    decoder = _create_decoder(decoder_name, config)
 
     logger.debug("Fitting decoder on training data")
     decoder.fit(X_train, y_train)
@@ -304,20 +349,20 @@ Examples:
     parser.add_argument(
         "--bin_size",
         type=float,
-        default=0.05,
-        help="Bin size for spike binning in seconds (default: 0.05)",
+        default=DEFAULT_BIN_SIZE,
+        help=f"Bin size for spike binning in seconds (default: {DEFAULT_BIN_SIZE})",
     )
     parser.add_argument(
         "--test_size",
         type=float,
-        default=0.2,
-        help="Test set proportion (default: 0.2)",
+        default=DEFAULT_TEST_SIZE,
+        help=f"Test set proportion (default: {DEFAULT_TEST_SIZE})",
     )
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="./reports/figures",
-        help="Directory to save figures (default: ./reports/figures)",
+        default=DEFAULT_OUTPUT_DIR,
+        help=f"Directory to save figures (default: {DEFAULT_OUTPUT_DIR})",
     )
     parser.add_argument(
         "--bayes_opt",

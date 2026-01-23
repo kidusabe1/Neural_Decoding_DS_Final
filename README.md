@@ -69,12 +69,11 @@ Neural_Decoding_DS_Final/
 │       │   ├── base.py     # Base decoder class
 │       │   ├── wiener.py   # Wiener Filter & Cascade
 │       │   ├── kalman.py   # Kalman Filter
-│       │   ├── svr.py      # Support Vector Regression
-│       │   ├── xgboost_decoder.py  # XGBoost
-│       │   └── neural_nets.py      # DNN, RNN, GRU, LSTM
+│       │   └── neural_nets.py      # DNN, LSTM
 │       │
 │       ├── evaluation/     # Metrics and analysis
 │       │   ├── __init__.py
+│       │   ├── hyperopt.py # Hyperparameter optimization
 │       │   └── metrics.py  # R², correlation, etc.
 │       │
 │       └── visualization/  # Plotting and figures
@@ -82,12 +81,13 @@ Neural_Decoding_DS_Final/
 │           └── plots.py    # Visualization utilities
 │
 ├── notebooks/              # Jupyter notebooks for exploration
-│   └── example_analysis.ipynb
+│   └── model_comparison.ipynb
 │
 ├── tests/                  # Unit and integration tests
 │   ├── __init__.py
-│   ├── test_data_loading.py
-│   ├── test_preprocessing.py
+│   ├── test_config.py
+│   ├── test_main.py
+│   ├── test_data_preprocessing.py
 │   ├── test_models.py
 │   └── test_evaluation.py
 │
@@ -112,7 +112,6 @@ Neural_Decoding_DS_Final/
 - **Spike binning:** Convert spike times to firing rates in time bins
 - **Feature extraction:** Create covariate matrix with spike history
 - **Train/test split:** Divide data for model training and evaluation
-- **Normalization:** Z-score outputs for certain decoders (SVR)
 
 ### Stage 3: Model Training
 **Module:** `src/neural_decoding/models/`
@@ -123,10 +122,8 @@ Neural_Decoding_DS_Final/
   - **Wiener Filter** - Linear regression baseline
   - **Wiener Cascade** - Linear-nonlinear model
   - **Kalman Filter** - State-space model
-  - **SVR** - Support Vector Regression
-  - **XGBoost** - Gradient boosted trees
   - **Dense NN** - Feedforward neural network
-  - **RNN/GRU/LSTM** - Recurrent neural networks
+  - **LSTM** - Recurrent neural networks (Long Short-Term Memory)
 
 ### Stage 4: Evaluation
 **Module:** `src/neural_decoding/evaluation/metrics.py`

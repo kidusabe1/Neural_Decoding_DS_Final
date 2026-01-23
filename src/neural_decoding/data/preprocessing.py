@@ -24,7 +24,7 @@ def bin_spikes(
     Returns:
         Matrix of size (num_bins x num_neurons) with spike counts.
     """
-    edges = np.arange(start_time, end_time, bin_size)  # Get edges of time bins
+    edges = np.arange(start_time, end_time + 1e-12, bin_size)  # Get edges of time bins
     num_bins = edges.shape[0] - 1  # Number of bins
     num_neurons = len(spike_times)  # Number of neurons
     neural_data = np.empty([num_bins, num_neurons])  # Initialize array for binned neural data
@@ -67,7 +67,7 @@ def bin_output(
         outputs = outputs[downsample_idxs, :]
         output_times = output_times[downsample_idxs]
 
-    edges = np.arange(start_time, end_time, bin_size)  # Get edges of time bins
+    edges = np.arange(start_time, end_time + 1e-12, bin_size)  # Get edges of time bins
     num_bins = edges.shape[0] - 1  # Number of bins
     output_dim = outputs.shape[1]  # Number of output features
     outputs_binned = np.empty([num_bins, output_dim])  # Initialize matrix of binned outputs
