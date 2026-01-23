@@ -1,4 +1,4 @@
-"""App logger."""
+"""App logger module."""
 
 import logging
 

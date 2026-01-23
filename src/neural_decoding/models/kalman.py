@@ -1,4 +1,8 @@
-from typing import Optional
+"""Kalman filter implementation."""
+
+from __future__ import annotations
+
+from typing import Optional, Tuple
 
 import numpy as np
 from numpy.linalg import inv
@@ -7,14 +11,35 @@ from neural_decoding.models.base import BaseDecoder
 
 
 class KalmanFilterDecoder(BaseDecoder):
-    """Kalman filter decoder matching the KordingLab implementation (Wu et al. 2003 style)."""
+    """Kalman filter decoder matching the KordingLab implementation (Wu et al. 2003 style).
+
+    Attributes:
+        C_scale (float): Scaling factor for noise covariance.
+        model (Optional[Tuple]): Tuple containing (A, W, H, Q) matrices.
+    """
 
     def __init__(self, noise_scale_c: float = 1.0):
+        """Initialize Kalman Filter Decoder.
+
+        Args:
+            noise_scale_c: Scaling factor for noise covariance.
+        """
         super().__init__(name="KalmanFilter")
         self.C_scale = noise_scale_c
-        self.model = None  # tuple (A, W, H, Q)
+        self.model: Optional[
+            Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+        ] = None  # tuple (A, W, H, Q)
 
-    def fit(self, X: np.ndarray, y: np.ndarray) -> "KalmanFilterDecoder":
+    def fit(self, X: np.ndarray, y: np.ndarray) -> KalmanFilterDecoder:
+        """Fit the Kalman Filter model.
+
+        Args:
+            X: Neural data (time x neurons).
+            y: Outputs (time x kinematic dims).
+
+        Returns:
+            Self instance.
+        """
         # X: neural data (time x neurons); y: outputs (time x kinematic dims)
         X_mat = y.T
         Z_mat = X.T
@@ -35,7 +60,21 @@ class KalmanFilterDecoder(BaseDecoder):
         self.is_fitted = True
         return self
 
-    def predict(self, X: np.ndarray, y_init: Optional[np.ndarray] = None) -> np.ndarray:
+    def predict(
+        self, X: np.ndarray, y_init: Optional[np.ndarray] = None
+    ) -> np.ndarray:
+        """Predict using the fitted Kalman Filter.
+
+        Args:
+            X: Neural data (time x neurons).
+            y_init: Optional initial state (kinematics).
+
+        Returns:
+            Predicted outputs (time x kinematics).
+        
+        Raises:
+            RuntimeError: If model is not fitted.
+        """
         if self.model is None:
             raise RuntimeError("Model not fitted.")
 
@@ -59,7 +98,7 @@ class KalmanFilterDecoder(BaseDecoder):
             state_m = A @ state
             K = P_m @ H.T @ inv(H @ P_m @ H.T + Q)
             P = (np.eye(num_states) - K @ H) @ P_m
-            
+
             # Ensure observation is a column vector
             observation = X_true[:, t + 1].reshape(-1, 1)
             state = state_m + K @ (observation - H @ state_m)

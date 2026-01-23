@@ -1,10 +1,22 @@
-from typing import Union
+"""Evaluation metrics utilities."""
+
+from __future__ import annotations
+
+from typing import Dict, Union
 
 import numpy as np
 
 
 def get_R2(y_true: np.ndarray, y_pred: np.ndarray) -> Union[float, np.ndarray]:
-    """R-squared (coefficient of determination) per output."""
+    """Calculate R-squared (coefficient of determination) per output.
+
+    Args:
+        y_true: Ground truth output array (samples x outputs).
+        y_pred: Predicted output array (samples x outputs).
+
+    Returns:
+        R-squared value as a float (if single output) or array of floats.
+    """
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)
     if y_true.ndim == 1:
@@ -20,7 +32,15 @@ def get_R2(y_true: np.ndarray, y_pred: np.ndarray) -> Union[float, np.ndarray]:
 
 
 def get_rho(y_true: np.ndarray, y_pred: np.ndarray) -> Union[float, np.ndarray]:
-    """Pearson correlation per output."""
+    """Calculate Pearson correlation coefficient per output.
+
+    Args:
+        y_true: Ground truth output array (samples x outputs).
+        y_pred: Predicted output array (samples x outputs).
+
+    Returns:
+        Pearson correlation coefficient as a float (if single output) or array of floats.
+    """
     y_true = np.asarray(y_true)
     y_pred = np.asarray(y_pred)
     if y_true.ndim == 1:
@@ -33,12 +53,24 @@ def get_rho(y_true: np.ndarray, y_pred: np.ndarray) -> Union[float, np.ndarray]:
     return rho if n_outputs > 1 else rho[0]
 
 
-def evaluate_decoder(y_true: np.ndarray, y_pred: np.ndarray, decoder_name: str = "Decoder") -> dict:
-    """Convenience wrapper returning r2 and rho (plus rmse-like metric for completeness)."""
+def evaluate_decoder(
+    y_true: np.ndarray, y_pred: np.ndarray, decoder_name: str = "Decoder"
+) -> Dict[str, Union[str, float, np.ndarray]]:
+    """Evaluate decoder predictions with multiple metrics.
+
+    Args:
+        y_true: Ground truth output array.
+        y_pred: Predicted output array.
+        decoder_name: Name of the decoder for identification.
+
+    Returns:
+        Dictionary containing decoder name, R2 score, Pearson correlation, and RMSE.
+    """
     r2 = get_R2(y_true, y_pred)
     rho = get_rho(y_true, y_pred)
     rmse = np.sqrt(np.mean((np.asarray(y_true) - np.asarray(y_pred)) ** 2, axis=0))
     return {"decoder": decoder_name, "r2": r2, "pearson_correlation": rho, "rmse": rmse}
+
 
 # Backward-compatible aliases
 get_r2_score = get_R2

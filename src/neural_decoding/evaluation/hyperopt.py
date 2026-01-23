@@ -1,20 +1,37 @@
-from typing import Tuple, Dict
+"""Hyperparameter optimization utilities."""
+
+from __future__ import annotations
+
+from typing import Dict, Tuple
 
 import numpy as np
-
 from bayes_opt import BayesianOptimization
 
 from neural_decoding.evaluation.metrics import get_R2
 from neural_decoding.models import (
-    WienerFilterDecoder,
-    WienerCascadeDecoder,
     KalmanFilterDecoder,
-    DenseNNDecoder,
-    LSTMDecoder,
+    WienerCascadeDecoder,
+    WienerFilterDecoder,
 )
 
 
-def _stack_train_valid(X_train: np.ndarray, X_valid: np.ndarray, y_train: np.ndarray, y_valid: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def _stack_train_valid(
+    X_train: np.ndarray,
+    X_valid: np.ndarray,
+    y_train: np.ndarray,
+    y_valid: np.ndarray,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Stack training and validation sets vertically.
+
+    Args:
+        X_train: Training features.
+        X_valid: Validation features.
+        y_train: Training outputs.
+        y_valid: Validation outputs.
+
+    Returns:
+        Tuple of (stacked_features, stacked_outputs).
+    """
     X_full = np.vstack([X_train, X_valid])
     y_full = np.vstack([y_train, y_valid])
     return X_full, y_full
@@ -29,9 +46,21 @@ def optimize_wiener_filter(
     n_iter: int = 5,
     kappa: float = 2.5,
 ) -> Tuple[WienerFilterDecoder, Dict]:
-    """Bayesian optimization over a simple hyperparameter for the Wiener filter.
+    """Optimize Wiener filter hyperparameters using Bayesian Optimization.
 
-    We optimize whether to use an intercept term.
+    Optimizes whether to use an intercept term.
+
+    Args:
+        X_train: Training features.
+        X_valid: Validation features.
+        y_train: Training outputs.
+        y_valid: Validation outputs.
+        init_points: Number of steps of random exploration.
+        n_iter: Number of steps of bayesian optimization.
+        kappa: Exploitation-exploration trade-off parameter.
+
+    Returns:
+        Tuple of (best_model, best_params_dict).
     """
 
     def wf_evaluate(fit_intercept: float) -> float:
@@ -62,7 +91,22 @@ def optimize_wiener_cascade(
     n_iter: int = 5,
     kappa: float = 10.0,
 ) -> Tuple[WienerCascadeDecoder, Dict]:
-    """Bayesian optimization over polynomial degree for Wiener cascade."""
+    """Optimize Wiener Cascade decoder hyperparameters using Bayesian Optimization.
+
+    Optimizes polynomial degree.
+
+    Args:
+        X_train: Training features.
+        X_valid: Validation features.
+        y_train: Training outputs.
+        y_valid: Validation outputs.
+        init_points: Number of steps of random exploration.
+        n_iter: Number of steps of bayesian optimization.
+        kappa: Exploitation-exploration trade-off parameter.
+
+    Returns:
+        Tuple of (best_model, best_params_dict).
+    """
 
     def wc_evaluate(degree: float) -> float:
         deg_int = int(degree)
@@ -92,12 +136,28 @@ def optimize_kalman_filter(
     n_iter: int = 5,
     kappa: float = 2.5,
 ) -> Tuple[KalmanFilterDecoder, Dict]:
-    """Bayesian optimization over process noise scale for Kalman filter."""
+    """Optimize Kalman filter hyperparameters using Bayesian Optimization.
+
+    Optimizes process noise scale.
+
+    Args:
+        X_train: Training features.
+        X_valid: Validation features.
+        y_train: Training outputs.
+        y_valid: Validation outputs.
+        init_points: Number of steps of random exploration.
+        n_iter: Number of steps of bayesian optimization.
+        kappa: Exploitation-exploration trade-off parameter.
+
+    Returns:
+        Tuple of (best_model, best_params_dict).
+    """
 
     def kf_evaluate(noise_scale_c: float) -> float:
         model = KalmanFilterDecoder(noise_scale_c=noise_scale_c)
         model.fit(X_train, y_train)
         y_valid_pred = model.predict(X_valid)
+
         return float(np.mean(get_R2(y_valid, y_valid_pred)))
 
     kf_bo = BayesianOptimization(kf_evaluate, {"noise_scale_c": (0.1, 10.0)}, verbose=0)

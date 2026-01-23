@@ -4,41 +4,50 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional, Tuple, Any
 
 import numpy as np
 
 # Data and preprocessing
-from neural_decoding.data import (
-    load_dataset,
+from neural_decoding.data.loader import load_dataset
+from neural_decoding.data.preprocessing import (
     bin_spikes,
     bin_output,
     prepare_train_test_split,
 )
 
 # Model imports
-from neural_decoding.models import (
+from neural_decoding.models.base import BaseDecoder
+from neural_decoding.models.wiener import (
     WienerFilterDecoder,
     WienerCascadeDecoder,
-    KalmanFilterDecoder,
 )
+from neural_decoding.models.kalman import KalmanFilterDecoder
 
 # Optional neural-net decoders (TensorFlow)
 try:
-    from neural_decoding.models import DenseNNDecoder, LSTMDecoder
-except Exception:
+    from neural_decoding.models.neural_nets import DenseNNDecoder, LSTMDecoder
+except (ImportError, ModuleNotFoundError):
     DenseNNDecoder = None
     LSTMDecoder = None
 
 # Evaluation
 from neural_decoding.evaluation.metrics import evaluate_decoder
 from neural_decoding.visualization.plots import plot_predictions, save_figure
-from neural_decoding.config import Paths
 from neural_decoding.logger import logger
 
 
-def run_data_loading(data_path: Path) -> tuple:
-    """Load neural and output data from file."""
+def run_data_loading(
+    data_path: Path,
+) -> Tuple[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+    """Load neural and output data from file.
+
+    Args:
+        data_path: Path to the data file.
+
+    Returns:
+        Tuple containing neural data (spikes) and tuple of (outputs, output_times).
+    """
     logger.info("Loading data from %s", data_path)
     data = load_dataset(data_path)
     neural_data = data["spike_times"]
@@ -48,8 +57,21 @@ def run_data_loading(data_path: Path) -> tuple:
     return neural_data, (outputs, output_times)
 
 
-def run_preprocessing(neural_data, outputs, config: dict) -> tuple:
-    """Preprocess neural and output data."""
+def run_preprocessing(
+    neural_data: np.ndarray,
+    outputs: Tuple[np.ndarray, np.ndarray],
+    config: Dict[str, Any],
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Preprocess neural and output data.
+
+    Args:
+        neural_data: Spike data.
+        outputs: Tuple of (output_values, output_times).
+        config: Configuration dictionary.
+
+    Returns:
+        Tuple of (X_train, X_test, y_train, y_test).
+    """
     logger.info("Preprocessing data...")
     bin_size = config.get("bin_size", 0.05)
     start_time = config.get("start_time", 0.0)
@@ -57,7 +79,9 @@ def run_preprocessing(neural_data, outputs, config: dict) -> tuple:
 
     if end_time is None:
         # Find the latest spike time across all neurons
-        end_time = max((np.max(neuron) if len(neuron) > 0 else 0 for neuron in neural_data))
+        end_time = max(
+            (np.max(neuron) if len(neuron) > 0 else 0 for neuron in neural_data)
+        )
 
     logger.debug("Binning spikes with bin_size=%.3f", bin_size)
     binned_spikes = bin_spikes(neural_data, bin_size, start_time, end_time)
@@ -95,10 +119,30 @@ def run_preprocessing(neural_data, outputs, config: dict) -> tuple:
     return X_train, X_test, y_train, y_test
 
 
-def run_training(X_train, y_train, decoder_name: str, config: dict):
-    """Train a decoder on the training data."""
+def run_training(
+    X_train: np.ndarray,
+    y_train: np.ndarray,
+    decoder_name: str,
+    config: Dict[str, Any],
+) -> BaseDecoder:
+    """Train a decoder on the training data.
+
+    Args:
+        X_train: Training features.
+        y_train: Training targets.
+        decoder_name: Name of the decoder to use.
+        config: Configuration dictionary.
+
+    Returns:
+        Trained decoder instance.
+
+    Raises:
+        ImportError: If required libraries are missing.
+        ValueError: If decoder name is unknown.
+    """
     logger.info("Training decoder: %s", decoder_name)
     name = decoder_name.lower()
+    decoder: BaseDecoder
 
     if name in ["wiener", "wiener_filter"]:
         decoder = WienerFilterDecoder()
@@ -135,8 +179,19 @@ def run_training(X_train, y_train, decoder_name: str, config: dict):
     return decoder
 
 
-def run_evaluation(decoder, X_test, y_test) -> tuple:
-    """Evaluate decoder on test data."""
+def run_evaluation(
+    decoder: BaseDecoder, X_test: np.ndarray, y_test: np.ndarray
+) -> Tuple[Dict[str, float], np.ndarray]:
+    """Evaluate decoder on test data.
+
+    Args:
+        decoder: Trained decoder instance.
+        X_test: Test features.
+        y_test: Test targets.
+
+    Returns:
+        Tuple of (results_dict, predictions).
+    """
     logger.info("Evaluating decoder...")
     y_pred = decoder.predict(X_test)
     results = evaluate_decoder(y_test, y_pred, decoder_name=decoder.name)
@@ -145,9 +200,19 @@ def run_evaluation(decoder, X_test, y_test) -> tuple:
 
 
 def run_visualization(
-    y_test, y_pred, output_dir: Path, decoder_name: str
+    y_test: np.ndarray,
+    y_pred: np.ndarray,
+    output_dir: Path,
+    decoder_name: str,
 ) -> None:
-    """Generate and save visualization of predictions."""
+    """Generate and save visualization of predictions.
+
+    Args:
+        y_test: True values.
+        y_pred: Predicted values.
+        output_dir: Directory to save figures.
+        decoder_name: Name of the decoder.
+    """
     logger.info("Visualizing results...")
     output_dir.mkdir(parents=True, exist_ok=True)
     fig = plot_predictions(
@@ -164,9 +229,21 @@ def run_visualization(
 def main(
     data_path: Optional[Path] = None,
     decoder_name: str = "wiener_filter",
-    config: Optional[dict] = None,
-) -> dict:
-    """Run the neural decoding pipeline."""
+    config: Optional[Dict[str, Any]] = None,
+) -> Dict[str, float]:
+    """Run the neural decoding pipeline.
+
+    Args:
+        data_path: Path to the data file.
+        decoder_name: Name of the decoder to use.
+        config: Configuration dictionary.
+
+    Returns:
+        Dictionary of evaluation results.
+
+    Raises:
+        ValueError: If data_path is not provided.
+    """
     if config is None:
         config = {}
 
@@ -190,8 +267,12 @@ def main(
         raise
 
 
-def parse_arguments() -> tuple:
-    """Parse command line arguments."""
+def parse_arguments() -> Tuple[Path, str, Dict[str, Any]]:
+    """Parse command line arguments.
+
+    Returns:
+        Tuple of (data_path, decoder_name, config_dict).
+    """
     parser = argparse.ArgumentParser(
         description="Neural Decoding Pipeline",
         formatter_class=argparse.RawDescriptionHelpFormatter,
