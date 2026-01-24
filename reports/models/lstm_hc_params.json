@@ -1,0 +1,5 @@
+{
+  "units": 239,
+  "dropout_rate": 0.05,
+  "num_epochs": 40
+}

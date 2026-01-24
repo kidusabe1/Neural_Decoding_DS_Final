@@ -96,7 +96,6 @@ class WienerCascadeDecoder(BaseDecoder):
             regr = linear_model.LinearRegression()
             regr.fit(X, y[:, i])
             y_lin = regr.predict(X)
-            # Fit polynomial between linear prediction and actual target
             p = np.polyfit(y_lin, y[:, i], self.degree)
             models.append((regr, p))
         self.models = models
@@ -123,3 +122,4 @@ class WienerCascadeDecoder(BaseDecoder):
             y_lin = regr.predict(X)
             y_pred[:, i] = np.polyval(p, y_lin)
         return y_pred
+

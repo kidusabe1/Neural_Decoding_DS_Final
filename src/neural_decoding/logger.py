@@ -1,17 +1,16 @@
+"""App logger module."""
+
 import logging
-import sys
-from pathlib import Path
-from typing import Optional
 
+# Configure the root logger with both file and console handlers
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(filename)s - %(funcName)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler("app.log"),
+        logging.StreamHandler(),
+    ],
+)
 
-def setup_logger(
-    name: str = "neural_decoding",
-    log_file: Optional[Path] = None,
-    level: int = logging.INFO,
-    format_string: Optional[str] = None,
-) -> logging.Logger:
-    pass
-
-
-def get_logger(name: str = "neural_decoding") -> logging.Logger:
-    pass
+# Get the root logger
+logger = logging.getLogger()

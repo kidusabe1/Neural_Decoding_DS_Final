@@ -1,16 +1,13 @@
-"""
-Neural Decoding Pipeline
+"""Neural Decoding Pipeline - A machine learning pipeline for decoding neural activity."""
 
-A machine learning pipeline for decoding neural activity.
-"""
+from __future__ import annotations
 
-from neural_decoding.config import DecodingConfig
-from neural_decoding.logger import setup_logger
-
-__version__ = "0.1.0"
-__author__ = "Kidus Abebe"
+from neural_decoding.config import DEFAULT_CONFIG, DecodingConfig, Paths
 
 __all__ = [
     "DecodingConfig",
-    "setup_logger",
+    "DEFAULT_CONFIG",
+    "Paths",
+    "logger",
 ]
+
