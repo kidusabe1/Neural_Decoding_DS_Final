@@ -13,6 +13,10 @@ from neural_decoding.models import (
     WienerCascadeDecoder,
     WienerFilterDecoder,
 )
+from neural_decoding.models.neural_nets import (
+    DenseNNDecoder,
+    LSTMDecoder
+    )
 
 
 def _stack_train_valid(
