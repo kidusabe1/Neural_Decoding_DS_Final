@@ -1,0 +1,23 @@
+{
+  "model": "Kalman Filter",
+  "dataset": "HC",
+  "metrics": {
+    "decoder": "Kalman Filter",
+    "r2": [
+      0.10120688310827441,
+      0.41991195488073696
+    ],
+    "pearson_correlation": [
+      0.4168707182853843,
+      0.6540752715596968
+    ],
+    "rmse": [
+      47.98113826057011,
+      36.6349876173576
+    ]
+  },
+  "params": {
+    "noise_scale_c": 1.0
+  },
+  "timestamp": "2026-01-24T13:41:40.770632"
+}

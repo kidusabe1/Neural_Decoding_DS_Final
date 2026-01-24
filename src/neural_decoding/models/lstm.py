@@ -73,8 +73,6 @@ class LSTMRegression(object):
     ----------
     units: integer, optional, default 400
         Number of hidden units in each layer
-        
-    units: Number of hidden units in each layer
 
     dropout: decimal, optional, default 0
         Proportion of units that get dropped out
