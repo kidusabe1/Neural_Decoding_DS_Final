@@ -14,9 +14,27 @@ dependencies = [
     "scipy",
     "matplotlib",
     "scikit-learn",
-    "tensorflow",
     "h5py",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "black",
+    "flake8",
+    "mypy",
+]
+notebook = [
+    "jupyter",
+    "ipykernel",
+    "seaborn",
+]
+optimization = [
     "bayesian-optimization",
+]
+neural_nets = [
+    "tensorflow",
 ]
 
 [tool.pytest.ini_options]
