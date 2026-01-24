@@ -1,5 +1,5 @@
 """Kalman filter implementation."""
-
+"""Edited by Gerrik 24/1/2025 - Added type hints and error handling for unfitted model."""
 from __future__ import annotations
 
 from typing import Optional, Tuple
@@ -16,6 +16,10 @@ class KalmanFilterDecoder(BaseDecoder):
     Attributes:
         C_scale (float): Scaling factor for noise covariance.
         model (Optional[Tuple]): Tuple containing (A, W, H, Q) matrices.
+        A is coefficent matrix for state transition between time steps of cursor pos.
+        W is noise covariance for cursor position.
+        H is coefficent matrix for mapping neural data to cursor pos.
+        Q is noise covariance for neural data.
     """
 
     def __init__(self, noise_scale_c: float = 1.0):
@@ -28,11 +32,10 @@ class KalmanFilterDecoder(BaseDecoder):
         self.C_scale = noise_scale_c
         self.model: Optional[
             Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
-        ] = None  # tuple (A, W, H, Q)
+        ] = None  # tuple (A, W, H, Q) Preallocate space for model.
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> KalmanFilterDecoder:
         """Fit the Kalman Filter model.
-
         Args:
             X: Neural data (time x neurons).
             y: Outputs (time x kinematic dims).
@@ -44,15 +47,24 @@ class KalmanFilterDecoder(BaseDecoder):
         X_mat = y.T
         Z_mat = X.T
 
-        num_time = X_mat.shape[1]
-        X1 = X_mat[:, 0 : num_time - 1]
-        X2 = X_mat[:, 1:]
 
-        # Transition matrix A and its covariance W
-        A = X2 @ X1.T @ inv(X1 @ X1.T)
+        #In paper this should be C, the number
+        #of columns or neurons or signal sources effecting state.
+        num_time = X_mat.shape[1]
+        X1 = X_mat[:, :-2]  #Pos at time t-1.
+        X2 = X_mat[:, 1:]   #Pos at time t.
+
+        # Transition matrix A and noise term for position W.
+        #X2@X1.T is covariance between neurons between time steps. A
+        #(X1@X1.T) is covariance of neurons at time step t-1.
+        #inv(X1@X1.T) is inverse of that covariance, and may not work if 
+        #matrix is singular. Measures conditional dependence between time samples.
+        #If a matrix is singular, that means signal sources are linearly dependent.
+        
+        A = X2 @ X1.T @ inv(X1 @ X1.T) #X2X1^T (X1X1^T)^-1. X2X1^T is the covariance between neurons between time steps.
         W = (X2 - A @ X1) @ (X2 - A @ X1).T / (num_time - 1) / self.C_scale
 
-        # Measurement matrix H and its covariance Q
+        # Measurement matrix H and noise matrix Q.
         H = Z_mat @ X_mat.T @ inv(X_mat @ X_mat.T)
         Q = (Z_mat - H @ X_mat) @ (Z_mat - H @ X_mat).T / num_time
 
@@ -76,7 +88,7 @@ class KalmanFilterDecoder(BaseDecoder):
             RuntimeError: If model is not fitted.
         """
         if self.model is None:
-            raise RuntimeError("Model not fitted.")
+            raise RuntimeError("Model not fitted. Please call 'fit' before 'predict'.")
 
         A, W, H, Q = self.model
         X_true = X.T
