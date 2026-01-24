@@ -1,4 +1,5 @@
 """Neural Decoding Pipeline - main entry point."""
+
 from __future__ import annotations
 
 
@@ -88,7 +89,7 @@ def run_preprocessing(
     Returns:
         Tuple of (X_train, X_test, y_train, y_test).
     """
-    logger.info("Preprocessing data...")
+    logger.info("Splitting data...")
     bin_size = config.get("bin_size", DEFAULT_BIN_SIZE)
     start_time = config.get("start_time", DEFAULT_START_TIME)
     end_time = config.get("end_time", None)
@@ -163,12 +164,14 @@ def _create_decoder(decoder_name: str, config: Dict[str, Any]) -> BaseDecoder:
         return KalmanFilterDecoder(noise_scale_c=noise_scale)
 
     # Neural network decoders
+    # Get config values or defaults
     units = config.get("units", DEFAULT_UNITS)
     dropout = config.get("dropout_rate", DEFAULT_DROPOUT)
     epochs = config.get("num_epochs", DEFAULT_EPOCHS)
     batch_size = config.get("batch_size", DEFAULT_BATCH_SIZE)
     verbose = config.get("verbose", DEFAULT_VERBOSE)
 
+    # Init lstm
     if name == "dense_nn":
         if DenseNNDecoder is None:
             raise ImportError("DenseNNDecoder unavailable.")
