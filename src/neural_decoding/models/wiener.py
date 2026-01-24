@@ -1,36 +1,125 @@
-from typing import Optional
+"""Wiener filter based decoders."""
+
+from __future__ import annotations
+
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
+from sklearn import linear_model
 
 from neural_decoding.models.base import BaseDecoder
 
 
+class WienerFilterDecoder(BaseDecoder):
+    """Linear regression decoder (Wiener filter) matching KordingLab implementation.
 
-from sklearn.linear_model import LinearRegression
-import numpy.polynomial.polynomial as poly
+    Attributes:
+        fit_intercept: Whether to calculate the intercept.
+        model: Trained sklearn LinearRegression model.
+    """
 
-class WienerCascadeDecoder(BaseDecoder):
-    def __init__(self, degree: int = 3):
-        self.degree = degree
-        self.linear = LinearRegression()
-        self.poly_coef = None
-        self.is_fitted = False
+    def __init__(self, fit_intercept: bool = True):
+        """Initialize Wiener Filter Decoder.
 
-    def fit(self, X: np.ndarray, y: np.ndarray) -> "WienerCascadeDecoder":
-        y_lin = self.linear.fit(X, y).predict(X)
-        # Fit polynomial to each output dimension
-        self.poly_coef = []
-        for i in range(y.shape[1]):
-            coef = poly.Polynomial.fit(y_lin[:, i], y[:, i], self.degree).convert().coef
-            self.poly_coef.append(coef)
+        Args:
+            fit_intercept: Whether to fit an intercept term.
+        """
+        super().__init__(name="WienerFilter")
+        self.fit_intercept = fit_intercept
+        self.model: Optional[linear_model.LinearRegression] = None
+
+    def fit(self, X: np.ndarray, y: np.ndarray) -> WienerFilterDecoder:
+        """Fit the Wiener filter.
+
+        Args:
+            X: Input features.
+            y: Target outputs.
+
+        Returns:
+            Self instance.
+        """
+        self.model = linear_model.LinearRegression(fit_intercept=self.fit_intercept)
+        self.model.fit(X, y)
         self.is_fitted = True
         return self
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        if not self.is_fitted:
+        """Predict using the Wiener filter.
+
+        Args:
+            X: Input features.
+
+        Returns:
+            Predicted outputs.
+
+        Raises:
+            RuntimeError: If model is not fitted.
+        """
+        if self.model is None:
             raise RuntimeError("Model not fitted.")
-        y_lin = self.linear.predict(X)
-        y_pred = np.zeros_like(y_lin)
-        for i, coef in enumerate(self.poly_coef):
-            y_pred[:, i] = poly.polyval(y_lin[:, i], coef)
+        return self.model.predict(X)
+
+
+class WienerCascadeDecoder(BaseDecoder):
+    """Linear + static nonlinearity (polynomial) decoder matching KordingLab implementation.
+
+    Attributes:
+        degree: Degree of polynomial nonlinearity.
+        models: List of tuples (linear_model, poly_coefficients).
+    """
+
+    def __init__(self, degree: int = 3):
+        """Initialize Wiener Cascade Decoder.
+
+        Args:
+            degree: Degree of the polynomial for the static nonlinearity.
+        """
+        super().__init__(name="WienerCascade")
+        self.degree = degree
+        self.models: Optional[
+            List[Tuple[linear_model.LinearRegression, np.ndarray]]
+        ] = None
+
+    def fit(self, X: np.ndarray, y: np.ndarray) -> WienerCascadeDecoder:
+        """Fit the Wiener Cascade model.
+
+        Args:
+            X: Input features.
+            y: Target outputs.
+
+        Returns:
+            Self instance.
+        """
+        num_outputs = y.shape[1]
+        models = []
+        for i in range(num_outputs):
+            regr = linear_model.LinearRegression()
+            regr.fit(X, y[:, i])
+            y_lin = regr.predict(X)
+            # Fit polynomial between linear prediction and actual target
+            p = np.polyfit(y_lin, y[:, i], self.degree)
+            models.append((regr, p))
+        self.models = models
+        self.is_fitted = True
+        return self
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        """Predict using the Wiener Cascade model.
+
+        Args:
+            X: Input features.
+
+        Returns:
+            Predicted outputs.
+
+        Raises:
+            RuntimeError: If model is not fitted.
+        """
+        if self.models is None:
+            raise RuntimeError("Model not fitted.")
+        num_outputs = len(self.models)
+        y_pred = np.empty((X.shape[0], num_outputs))
+        for i, (regr, p) in enumerate(self.models):
+            y_lin = regr.predict(X)
+            y_pred[:, i] = np.polyval(p, y_lin)
         return y_pred
