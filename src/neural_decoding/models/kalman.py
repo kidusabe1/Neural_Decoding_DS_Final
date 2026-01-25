@@ -1,5 +1,7 @@
-"""Kalman filter implementation."""
-"""Edited by Gerrik 24/1/2025 - Added type hints and error handling for unfitted model."""
+"""Kalman filter implementation.
+
+Edited by Gerrik 24/1/2025 - Added type hints and error handling for unfitted model.
+"""
 from __future__ import annotations
 
 from typing import Optional, Tuple
@@ -51,8 +53,9 @@ class KalmanFilterDecoder(BaseDecoder):
         #In paper this should be C, the number
         #of columns or neurons or signal sources effecting state.
         num_time = X_mat.shape[1]
-        X1 = X_mat[:, :-2]  #Pos at time t-1.
-        X2 = X_mat[:, 1:]   #Pos at time t.
+        # Align sequences: X1 (t-1), X2 (t) with equal length
+        X1 = X_mat[:, :-1]
+        X2 = X_mat[:, 1:]
 
         # Transition matrix A and noise term for position W.
         #X2@X1.T is covariance between neurons between time steps. A
