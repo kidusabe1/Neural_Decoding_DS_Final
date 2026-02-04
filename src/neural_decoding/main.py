@@ -159,7 +159,7 @@ def _create_decoder(decoder_name: str, config: Dict[str, Any]) -> BaseDecoder:
         degree = config.get("degree", DEFAULT_DEGREE)
         return WienerCascadeDecoder(degree=degree)
 
-    if name == "kalman":
+    if name in ["kalman", "kalman_filter"]:
         noise_scale = config.get("noise_scale_c", DEFAULT_NOISE_SCALE)
         return KalmanFilterDecoder(noise_scale_c=noise_scale)
 
@@ -325,10 +325,10 @@ def parse_arguments() -> Tuple[Path, str, Dict[str, Any]]:
         description="Neural Decoding Pipeline",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-Examples:
-  python -m neural_decoding.main --data_path data/raw/m1_data_raw.mat --decoder wiener_filter
-  python -m neural_decoding.main --data_path data/raw/hc_data_raw.mat --decoder kalman --bin_size 0.1
-        """,
+        Examples:
+        python -m neural_decoding.main --data_path data/raw/m1_data_raw.mat --decoder wiener_filter
+        python -m neural_decoding.main --data_path data/raw/hc_data_raw.mat --decoder kalman --bin_size 0.1
+                """,
     )
     parser.add_argument(
         "--data_path",

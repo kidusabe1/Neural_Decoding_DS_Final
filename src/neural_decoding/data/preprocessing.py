@@ -27,7 +27,9 @@ def bin_spikes(
     edges = np.arange(start_time, end_time + 1e-12, bin_size)  # Get edges of time bins
     num_bins = edges.shape[0] - 1  # Number of bins
     num_neurons = len(spike_times)  # Number of neurons
-    neural_data = np.empty([num_bins, num_neurons])  # Initialize array for binned neural data
+    neural_data = np.empty(
+        [num_bins, num_neurons]
+    )  # Initialize array for binned neural data
 
     # Count number of spikes in each bin for each neuron, and put in array
     for i in range(num_neurons):
@@ -70,7 +72,9 @@ def bin_output(
     edges = np.arange(start_time, end_time + 1e-12, bin_size)  # Get edges of time bins
     num_bins = edges.shape[0] - 1  # Number of bins
     output_dim = outputs.shape[1]  # Number of output features
-    outputs_binned = np.empty([num_bins, output_dim])  # Initialize matrix of binned outputs
+    outputs_binned = np.empty(
+        [num_bins, output_dim]
+    )  # Initialize matrix of binned outputs
 
     # Loop through bins, and get the mean outputs in those bins
     for i in range(num_bins):
@@ -103,10 +107,16 @@ def get_spikes_with_history(
     Returns:
         Matrix of size (num_samples x num_features) for decoding.
     """
-    num_examples = neural_data.shape[0]  # Number of total time bins we have neural data for
+    num_examples = neural_data.shape[
+        0
+    ]  # Number of total time bins we have neural data for
     num_neurons = neural_data.shape[1]  # Number of neurons
-    surrounding_bins = bins_before + bins_after + bins_current  # Number of surrounding time bins used for prediction
-    X = np.empty([num_examples, surrounding_bins, num_neurons])  # Initialize covariate matrix with NaNs
+    surrounding_bins = (
+        bins_before + bins_after + bins_current
+    )  # Number of surrounding time bins used for prediction
+    X = np.empty(
+        [num_examples, surrounding_bins, num_neurons]
+    )  # Initialize covariate matrix with NaNs
     X[:] = np.nan
     start_idx = 0
     for i in range(num_examples - bins_before - bins_after):
@@ -120,6 +130,10 @@ def flatten_spike_history(X: np.ndarray) -> np.ndarray:
     """
     Flatten 3D spike history matrix to 2D for non-recurrent models.
     (n_samples, n_bins, n_neurons) -> (n_samples, n_bins * n_neurons)
+    Args:
+        X: 3D array of size (num_samples x num_bins x num_neurons).
+    Returns:
+        2D array of size (num_samples x (num_bins * num_neurons)).
     """
     return X.reshape(X.shape[0], -1)
 
@@ -151,7 +165,9 @@ def prepare_train_test_split(
     y = y[valid_mask]
     n = X_flat.shape[0]
     if n == 0:
-        raise ValueError("No valid samples available after removing NaNs. Check binning parameters.")
+        raise ValueError(
+            "No valid samples available after removing NaNs. Check binning parameters."
+        )
     # Split into train/val/test
     np.random.seed(random_seed)
     idx = np.random.permutation(n)
@@ -160,16 +176,25 @@ def prepare_train_test_split(
     n_train = n - n_test - n_valid
     X_train = X_flat[idx[:n_train]]
     y_train = y[idx[:n_train]]
-    X_valid = X_flat[idx[n_train:n_train+n_valid]]
-    y_valid = y[idx[n_train:n_train+n_valid]]
-    X_test = X_flat[idx[n_train+n_valid:]]
-    y_test = y[idx[n_train+n_valid:]]
+    X_valid = X_flat[idx[n_train : n_train + n_valid]]
+    y_valid = y[idx[n_train : n_train + n_valid]]
+    X_test = X_flat[idx[n_train + n_valid :]]
+    y_test = y[idx[n_train + n_valid :]]
     return X_train, X_valid, X_test, y_train, y_valid, y_test
 
 
-def zscore_normalize(data: np.ndarray, mean: Optional[np.ndarray] = None, std: Optional[np.ndarray] = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def zscore_normalize(
+    data: np.ndarray,
+    mean: Optional[np.ndarray] = None,
+    std: Optional[np.ndarray] = None,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
-    Z-score normalize data. Returns normalized data, mean, std.
+    Args:
+        data: Data to normalize (num_samples x num_features).
+        mean: Optional mean to use for normalization. Will auto calc
+        std: Optional std to use for normalization. Will auto calc.
+    Returns:
+        Tuple of (normalized data, mean, std).
     """
     if mean is None:
         mean = np.mean(data, axis=0)
